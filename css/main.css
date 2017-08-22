@@ -1,0 +1,119 @@
+body,html{
+	margin: 0;
+	padding: 0;
+	font-family: "Arial", sans-serif;
+	font-size: 0.95em;
+	text-align: center;
+}
+
+.barGraphBackground{
+	background-color: #F5F2EB;
+    border: 1px solid #CCC;
+	margin-top: 50px;
+}
+
+.lineGraphBackground {
+	background-color: white;
+	border: 1px solid #CCC;
+	margin-top: 50px;
+}
+
+.chartCalendar {
+  background: #fff;
+  margin: 5px;
+}
+
+.bar{
+	fill: #35586C;
+	shape-rendering: crispEdges;
+}
+
+.bar:hover {
+  fill: orange;
+}
+
+.axis path,
+.axis line{
+	fill: none;
+	stroke: #000;
+	shape-rendering: crispEdges;
+}
+
+.button {
+	background-color: #000;
+	border: none;
+	color: white;
+	padding: 10px 22px;
+	text-align: center;
+	text-decoration: none;
+	display: inline-block;
+	font-size: 14px;
+	margin-top:10px;
+	margin-right: 10px;
+}
+
+#tooltip {
+  position: absolute;
+  width: 200px;
+  height: auto;
+  padding: 10px;
+  background-color: #000;
+  opacity: 0.9;
+  color: white;
+  -webkit-border-radius: 10px;
+  -moz-border-radius: 10px;
+  border-radius: 10px;
+  -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+#tooltip.hidden {
+	display: none;
+}
+
+#tooltip p {
+    margin: 0;
+    font-family: Futura;
+    font-size: 10px;
+    line-height: 20px;
+}
+
+.line {
+    fill: none;
+    stroke-width: 2.0px;
+}
+
+
+.gridline path,
+.gridline line{
+    fill: none;
+    opacity: 0.5;
+    stroke: #ccc;
+    shape-rendering: crispEdges;
+}
+
+.calender-map {
+     font: 10px sans-serif;
+     shape-rendering: crispEdges;
+   }
+.day {
+ stroke: #666;
+}
+.month {
+ fill: none;
+ stroke: #000;
+ stroke-width: 2px;
+}
+.RdYlGn .q0-11{fill:rgb(165,0,38)}
+.RdYlGn .q1-{fill:rgb(215,48,39)}
+.RdYlGn .q2-11{fill:rgb(244,109,67)}
+.RdYlGn .q3-11{fill:rgb(253,174,97)}
+.RdYlGn .q4-11{fill:rgb(254,224,139)}
+.RdYlGn .q5-11{fill:rgb(255,255,191)}
+.RdYlGn .q6-11{fill:rgb(217,239,139)}
+.RdYlGn .q7-11{fill:rgb(166,217,106)}
+.RdYlGn .q8-11{fill:rgb(102,189,99)}
+.RdYlGn .q9-11{fill:rgb(26,152,80)}
+.RdYlGn .q10-11{fill:rgb(0,104,55)}

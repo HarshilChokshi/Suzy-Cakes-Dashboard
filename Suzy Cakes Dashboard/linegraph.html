@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>D3-LineGraph</title>
+    <link rel='stylesheet' href='../css/main.css'>
+    <script  type='text/javascript' src='https://d3js.org/d3.v4.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js" charset="utf-8"></script>
+    <script src="http://isaaccambron.com/twix.js/twix.js/dist/twix.min.js"></script>
+    <script src="https://cdn.rawgit.com/eligrey/canvas-toBlob.js/f1a01896135ab378aa5c0118eadd81da55e698d8/canvas-toBlob.js"></script>
+    <script src="https://cdn.rawgit.com/eligrey/FileSaver.js/e9d941381475b5df8b7d7691013401e171014e89/FileSaver.min.js"></script>
+    <script src="../js/graphDownloadSVGHelper.js"></script>
+    <script src="../js/lineGraphData.js"></script>
+</head>
+<body>
+<script>
+    var lineGraphData = [];
+    var parseDate = d3.timeParse('%Y-%m-%d');
+    var itr = moment.twix(new Date('2013-06-28'),new Date('2014-06-23')).iterate("days");
+    var dateRange=[];
+    while(itr.hasNext()){
+        dateRange.push(itr.next().toDate())
+    }
+
+    //This variable keeps track of all the names of the current
+    //menu level and is used to display the legend and colors
+    var hierarchicalMenuNamesForLineGraph = {};
+
+    unformattedLineGraphData.forEach(function(element) {
+        var date = parseDate(element.cleanedTimeStamp);
+        var indexOfCurrentTopMenu;
+        if(!Object.keys(hierarchicalMenuNamesForLineGraph).includes(element.topMenuName)) {
+            hierarchicalMenuNamesForLineGraph[element.topMenuName] = {};
+            lineGraphData.push({
+                menuName: element.topMenuName,
+                values: [{
+                    date: date
+                }],
+                subMenus: []
+            });
+            indexOfCurrentTopMenu = lineGraphData.length - 1;
+            lineGraphData[indexOfCurrentTopMenu].values[0][date] = element.amountSold;
+        } else {
+            for(var i = 0; i < lineGraphData.length; i++) {
+                if(lineGraphData[i].menuName === element.topMenuName) {
+                    indexOfCurrentTopMenu = i;
+                    var menuWithDateExists = false;
+                    for(var j = 0; j < lineGraphData[i].values.length; j++) {
+                        if(lineGraphData[i].values[j].date.getTime() === date.getTime()) {
+                            lineGraphData[i].values[j][date] += element.amountSold;
+                            menuWithDateExists = true;
+                            break;
+                        }
+                    }
+
+                    if(menuWithDateExists) {
+                        break;
+                    }
+                    lineGraphData[i].values.push({
+                        date: date
+                    });
+                    var lastIndex = lineGraphData[i].values.length - 1;
+                    lineGraphData[i].values[lastIndex][date] = element.amountSold;
+                    break;
+                }
+            }
+        }
+
+        var indexOfCurrentSubMenu;
+        if(!Object.keys(hierarchicalMenuNamesForLineGraph[element.topMenuName]).includes(element.menugroupname)) {
+            hierarchicalMenuNamesForLineGraph[element.topMenuName][element.menugroupname] = {};
+            lineGraphData[indexOfCurrentTopMenu].subMenus.push({
+                menuName: element.menugroupname,
+                values: [{
+                    date: date
+                }],
+                subMenus: []
+            });
+            indexOfCurrentSubMenu = lineGraphData[indexOfCurrentTopMenu].subMenus.length - 1;
+            lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].values[0][date] = element.amountSold;
+        } else {
+            for(var i = 0; i < lineGraphData[indexOfCurrentTopMenu].subMenus.length; i++) {
+                if(lineGraphData[indexOfCurrentTopMenu].subMenus[i].menuName === element.menugroupname) {
+                    indexOfCurrentSubMenu = i;
+                    var menuWithDateExists = false;
+                    for(var j = 0; j < lineGraphData[indexOfCurrentTopMenu].subMenus[i].values.length; j++) {
+                        if(lineGraphData[indexOfCurrentTopMenu].subMenus[i].values[j].date.getTime() === date.getTime()) {
+                            lineGraphData[indexOfCurrentTopMenu].subMenus[i].values[j][date] += element.amountSold;
+                            menuWithDateExists = true;
+                            break;
+                        }
+                    }
+
+                    if(menuWithDateExists) {
+                        break;
+                    }
+
+                    lineGraphData[indexOfCurrentTopMenu].subMenus[i].values.push({
+                        date: date
+                    });
+
+                    var lastIndex = lineGraphData[indexOfCurrentTopMenu].subMenus[i].values.length - 1;
+                    lineGraphData[indexOfCurrentTopMenu].subMenus[i].values[lastIndex][date] = element.amountSold;
+                    break;
+                }
+            }
+        }
+
+        if(!Object.keys(hierarchicalMenuNamesForLineGraph[element.topMenuName][element.menugroupname]).includes(element.menuitem)) {
+            hierarchicalMenuNamesForLineGraph[element.topMenuName][element.menugroupname][element.menuitem] = {};
+            lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus.push({
+                menuName: element.menuitem,
+                values: [{
+                    date: date
+                }]
+            });
+            var lastIndex = lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus.length - 1;
+            lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus[lastIndex].values[0][date] = element.amountSold;
+        } else {
+            for(var i= 0; i < lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus.length; i++) {
+                if(lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus[i].menuName === element.menuitem) {
+                    lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus[i].values.push({
+                        date: date
+                    });
+                    var lastIndex = lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus[i].values.length - 1;
+                    lineGraphData[indexOfCurrentTopMenu].subMenus[indexOfCurrentSubMenu].subMenus[i].values[lastIndex][date] = element.amountSold;
+                }
+            }
+        }
+    });
+
+    var currentLineGraphData = [];
+    var currentLineGraphView = 'topmenugroups';
+    var currentTopLevelMenu = '';
+    var currentDataLength = 0;
+    const maxLinesToDisplay = 3;
+    var numberOfCurrentlyShownLines = maxLinesToDisplay;
+
+    var widthOfLineGraphSVG = 1300;
+    var heightOfLneGraphSVG = 800;
+
+    var lineGraphMargins = {
+            top: 80,
+            bottom: 90,
+            left: 80,
+            right: 200
+        },
+        widthOfLineGraph = widthOfLineGraphSVG - lineGraphMargins.left - lineGraphMargins.right,
+        heightOfLineGraph = heightOfLneGraphSVG - lineGraphMargins.top - lineGraphMargins.bottom;
+
+
+    var lineGraphToolTip = d3.select('body').append('div')
+        .classed('hidden', true)
+        .attr('id', 'tooltip')
+        .style('width', '80px');
+
+    lineGraphToolTip.append('text')
+        .attr('id', 'tooltipDate')
+        .style('text-anchor', 'middle')
+        .style('color', 'white')
+        .style('font-weight', 'bold')
+        .style('font-size', '100%')
+        .style('font-family', 'Times New Roman');
+
+    var lineGraphSVG = d3.select('body').append('svg')
+        .attr('width', widthOfLineGraphSVG)
+        .attr('height', heightOfLneGraphSVG)
+        .classed('lineGraphBackground', true)
+        .attr('id', 'lineGraphSVG');
+
+    var lineGraph = lineGraphSVG.append('g')
+        .attr('id', 'lineChart')
+        .attr('transform', 'translate(' + lineGraphMargins.left + ',' + lineGraphMargins.top + ')');
+
+    var controlsForLineGraph = d3.select('body').append('div')
+        .attr('id', 'controlsForLineGraph')
+        .style('margin-bottom', '100px');
+
+    var showTopLinesButton = controlsForLineGraph.append('button')
+        .html('Show Top ' + maxLinesToDisplay + ' lines')
+        .attr('id', 'showTopLinesButton')
+        .classed('button', true);
+
+    var hideAllLinesButton = controlsForLineGraph.append('button')
+        .html('Hide All Lines')
+        .attr('id', 'hideAllMenuGroups')
+        .classed('button', true);
+
+    var showDataByTopMenuGroupsButton = controlsForLineGraph.append('button')
+        .html('Show Top Menu Groups')
+        .attr('id', 'showDataByTopMenuGroupsButton')
+        .classed('button', true);
+
+    var exportlineGraphDataToCsvButton = controlsForLineGraph.append('button')
+        .html('Export Current Data To CSV')
+        .attr('id', 'exportlineGraphDataToCsvButton')
+        .classed('button', true);
+
+    var downloadGraphButton = controlsForLineGraph.append('button')
+        .html('Download Graph')
+        .attr('id', 'downloadGraphButton')
+        .classed('button', true);
+
+    d3.select('#lineGraphSVG').append('text')
+        .attr('x', widthOfLineGraphSVG/2)
+        .attr('y', 25)
+        .attr('id', 'LineGraphTitle')
+        .style('text-anchor', 'middle')
+        .style('font-weight', 'bold')
+        .style('font-size', '200%')
+        .style('font-family', 'Times New Roman')
+        .text('Sales By Top Menus');
+
+    d3.select('#lineGraphSVG').append('text')
+        .attr('transform','translate(' + ((widthOfLineGraphSVG)/2) + ' ,' + (heightOfLneGraphSVG - 10) + ')')
+        .attr('id', 'xAxisTitleLineChart')
+        .style('text-anchor', 'middle')
+        .style('font-weight', 'bold')
+        .style('font-size', '125%')
+        .style('font-family', 'Times New Roman')
+        .text('Date');
+
+    d3.select('#lineGraphSVG').append('text')
+        .attr('transform', 'rotate(-90)')
+        .attr('y',2)
+        .attr('x',-heightOfLneGraphSVG/2)
+        .attr('dy', '1em')
+        .attr('id', 'yAxisTitleLineCHart')
+        .style('text-anchor', 'middle')
+        .style('font-weight', 'bold')
+        .style('font-size', '125%')
+        .style('font-family', 'Times New Roman')
+        .text('Amount Sold');
+
+    var lineGraphColors = ['#1F77B4', '#FF7F0E', '#2CA02C', '#D62728', '#9467BD', '#8C564B', '#E377C2', '#7F7F7F', '#BCBD22', '#17BECF', '#AEC7E8', '#FFBB78', '#98DF8A', '#FF9896', '#C5B0D5', '#C49C94', '#F7B6D2', '#C7C7C7', '#DBDB8D', '#9EDAE5'];
+    var color = d3.scaleOrdinal(lineGraphColors);
+
+    var xScaleLineGraph = d3.scaleTime()
+        .range([0, widthOfLineGraph]);
+
+    var yScaleLineGraph = d3.scaleLinear()
+        .range([heightOfLineGraph, 0]);
+
+    var xAxisLineGraph = d3.axisBottom()
+        .scale(xScaleLineGraph);
+
+    var yAxisLineGraph = d3.axisLeft()
+        .scale(yScaleLineGraph);
+
+    var statesOfLegendRectanglesArray;
+
+    function plotLineGraph (params) {
+        var line = d3.line()
+            .x(function(d) {
+                return xScaleLineGraph(d.date);
+            })
+            .y(function(d) {
+                return yScaleLineGraph(d[d.date]);
+            });
+
+        currentDataLength = params.data.length;
+        currentLineGraphData = params.data;
+
+        currentLineGraphData.length < maxLinesToDisplay ? appendToolTipSections(currentLineGraphData.length) : appendToolTipSections(maxLinesToDisplay);
+
+        //Use this function to do 3 things, find the max
+        //point in the data, the total amount sold for each
+        //menu and fill in the empty dates
+        var maxAmountSold = findMaxAndFillEmptyDates(params.data);
+
+        params.data.sort(function (a, b) {
+            return b.totalAmountSold - a.totalAmountSold;
+        });
+
+        yScaleLineGraph.domain([0, maxAmountSold]);
+        xScaleLineGraph.domain([dateRange[0], dateRange[dateRange.length - 1]]);
+        var menuNamesToDisplay = [];
+        params.data.forEach(function(element) {
+            menuNamesToDisplay.push(element.menuName);
+        });
+        color.domain(menuNamesToDisplay);
+
+        statesOfLegendRectanglesArray = [];
+        //enter phase for legend
+        var legend = d3.select('#lineGraphSVG')
+            .selectAll('.legend')
+            .data(params.data)
+            .enter()
+            .append('g')
+            .classed('legend', true);
+
+        //update phase for legend
+        legend.attr('id', function (d, i) {
+            return `lineGraphLegend${i}`;
+        })
+            .append('rect')
+            .attr('class', 'legendRectangles')
+            .attr('id', function (d, i) {
+                return `legendRectangle${i}`;
+            })
+            .attr('x', widthOfLineGraphSVG - lineGraphMargins.right + 40)
+            .attr('y', function(d, i) {
+                return (i * 25) + 10;
+            })
+            .attr('width', 15)
+            .attr('height', 15)
+            .style('stroke', function(d) {
+                return color(d.menuName);
+            })
+            .style('fill', function (d, i) {
+                if(i < maxLinesToDisplay) {
+                    return lineGraphColors[i];
+                } else {
+                    return 'none';
+                }
+            });
+
+        legend.append('text')
+            .attr('x', widthOfLineGraphSVG - lineGraphMargins.right + 58)
+            .attr('y', function(d, i) {
+                return (i * 25) + 22.5;
+            })
+            .text(function(d) {
+                return d.menuName;
+            })
+            .style('font-size', '100%');
+
+        legend.append('svg:rect')
+            .attr('x', widthOfLineGraphSVG - lineGraphMargins.right + 40)
+            .attr('y', function (d, i) {
+                return (i * 25) + 10;
+            })
+            .attr('width', lineGraphMargins.right)
+            .attr('height', 20)
+            .attr('id', function (d, i) {
+                if(i  < maxLinesToDisplay) {
+                    statesOfLegendRectanglesArray.push(1);
+                } else {
+                    statesOfLegendRectanglesArray.push(0);
+                }
+                return `legendRectangleButton-${i}`;
+            })
+            .style('opacity', '0')
+            .on('click', function (d, i) {
+                if(statesOfLegendRectanglesArray[i] === 0) {
+                    statesOfLegendRectanglesArray[i] = 1;
+                    numberOfCurrentlyShownLines++;
+                    d3.select(`#legendRectangle${i}`).style('fill', lineGraphColors[i]);
+                    d3.select(`#menuGroupElement${i}`).attr('visibility', 'visible');
+                    d3.select(`#mousePerLine${i}`).attr('visibility', 'visible');
+                    d3.select('.mouse-line').attr('visibility', 'visible');
+
+                   appendSingleTooltipSection(i);
+                } else {
+                    statesOfLegendRectanglesArray[i] = 0;
+                    numberOfCurrentlyShownLines--;
+                    d3.select(`#legendRectangle${i}`).style('fill', 'none');
+                    d3.select(`#menuGroupElement${i}`).attr('visibility', 'hidden');
+                    d3.select(`#mousePerLine${i}`).attr('visibility', 'hidden');
+                    d3.select('#menuNameToolTipDiv' + i).remove();
+                    var areAllGroupsUnselected = true;
+                    for(var i = 0; i < statesOfLegendRectanglesArray.length; i++) {
+                        if(statesOfLegendRectanglesArray[i] === 1) {
+                            areAllGroupsUnselected = false;
+                            break;
+                        }
+                    }
+                    if(areAllGroupsUnselected) {
+                        d3.select('.mouse-line').attr('visibility', 'hidden');
+                    }
+                }
+            });
+
+        drawLineGraphAxis.call(this, params);
+
+        var transition = d3.transition()
+            .duration(2300)
+            .ease(d3.easeLinear)
+            .on('start', function(){
+                d3.selectAll('.mouse-per-line').attr('visibility', 'hidden');
+                d3.select('.mouse-line').attr('visibility', 'hidden');
+                d3.select('#tooltip').classed('hidden', true);
+            })
+            .on('end', function(){
+                for(var i = 0; i < maxLinesToDisplay; i++) {
+                    d3.select(`#mousePerLine${i}`).attr('visibility', 'visible');
+                }
+
+                d3.select('.mouse-line').attr('visibility', 'visible');
+            });
+
+        //enter phase for menu lines
+        var menuGroupLineGraphLines = this.selectAll('.menuGroupLineGraphLines')
+            .data(params.data)
+            .enter().append('g')
+            .classed('menuGroupLineGraphLines', true);
+
+        //update phase for menu lines
+        menuGroupLineGraphLines.attr('id', function (d, i) {
+            return `menuGroupElement${i}`;
+        })
+            .attr('visibility', function(d, i) {
+                if(i < maxLinesToDisplay) {
+                    return 'visible';
+                } else {
+                    return 'hidden';
+                }
+            })
+            .append('path')
+            .classed('line', true)
+            .attr('id', function (d, i) {
+                return `menuGroupLine${i}`;
+            })
+            .attr('d', function(d, i) {
+                return line(d.values);
+            })
+            .style('stroke', function(d) {
+                return color(d.menuName);
+            })
+            .attr('stroke-dasharray', function(){ return this.getTotalLength(); })
+            .attr('stroke-dashoffset', function(){ return this.getTotalLength(); });
+
+        this.selectAll('.line').transition(transition)
+            .attr('stroke-dashoffset', 0);
+
+
+        menuGroupLineGraphLines.append('text')
+            .datum(function(d) {
+                return {
+                    name: d.menuName,
+                    value: d.values[d.values.length - 1]
+                };
+            })
+            .attr('transform', function(d) {
+                return 'translate(' + xScaleLineGraph(d.value.date) + ',' + yScaleLineGraph(d.value[d.value.date]) + ')';
+            })
+            .attr('x', 3)
+            .attr('dy', '.35em');
+
+        var mouseG = this.append('g')
+            .classed('mouse-over-effects', true)
+            .attr('id', 'mouseG');
+
+        mouseG.append('path') // this is the black vertical line to follow mouse
+            .attr('class', 'mouse-line')
+            .style('stroke', '#A9A9A9')
+            .style('stroke-width', '1px')
+            .style('opacity', '0');
+
+        var lines = document.getElementsByClassName('line');
+
+        mouseG.append('svg:rect') // append a rect to catch mouse movements on canvas
+            .attr('width', widthOfLineGraph) // can't catch mouse events on a g element
+            .attr('height', heightOfLineGraph)
+            .attr('fill', 'none')
+            .attr('pointer-events', 'all')
+            .attr('id', 'mouseRect')
+            .on('mouseout', function() { // on mouse out hide line, circles and text
+                d3.select('.mouse-line')
+                    .style('opacity', '0');
+                d3.selectAll('.mouse-per-line circle')
+                    .style('opacity', '0');
+                d3.selectAll('.mouse-per-line text')
+                    .style('opacity', '0');
+                lineGraphToolTip.classed('hidden', true);
+            })
+            .on('mouseover', function() { // on mouse in show line, circles and text
+                d3.select('.mouse-line')
+                    .style('opacity', '1');
+                d3.selectAll('.mouse-per-line circle')
+                    .style('opacity', '1')
+                    .style('stroke-width', '2px');
+                d3.selectAll('.mouse-per-line text')
+                    .style('opacity', '1')
+                    .style('font-weight', 'bold');
+                lineGraphToolTip.classed('hidden', false);
+            })
+            .on('mousemove', function() { // mouse moving over canvas
+                var mouse = d3.mouse(this);
+                var bodyMouse = d3.mouse(d3.select('body').node());
+                var xPosition = bodyMouse[0] - /*The width of the tooltip8*/ 80 - 50;
+                var yPosition = bodyMouse[1];
+
+                lineGraphToolTip.style('left', xPosition + 'px')
+                    .style('top', yPosition + 'px');
+
+                d3.select('.mouse-line')
+                    .attr('d', function() {
+                        var d = 'M' + mouse[0] + ',' + heightOfLineGraph;
+                        d += ' ' + mouse[0] + ',' + 0;
+                        return d;
+                    });
+
+                d3.selectAll('.mouse-per-line')
+                    .attr('transform', function(d, i) {
+                        var xDate = xScaleLineGraph.invert(mouse[0]),
+                            bisect = d3.bisector(function(d) {
+                                d3.select('#tooltipDate').text(d.date.getMonth() + 1 + '/' + d.date.getDate() + '/' + d.date.getFullYear());
+                                return d.date;
+                            }).right;
+                        idx = bisect(d.values, xDate);
+
+                        var beginning = 0,
+                            end = lines[i].getTotalLength(),
+                            target = null;
+
+                        while (true){
+                            target = Math.floor((beginning + end) / 2);
+                            pos = lines[i].getPointAtLength(target);
+                            if ((target === end || target === beginning) && pos.x !== mouse[0]) {
+                                break;
+                            }
+                            if (pos.x > mouse[0])      end = target;
+                            else if (pos.x < mouse[0]) beginning = target;
+                            else break; //position found
+                        }
+
+                        d3.select('#amountSoldText' + i).text(Math.round(yScaleLineGraph.invert(pos.y)));
+                        return 'translate(' + mouse[0] + ',' + pos.y +')';
+                    });
+            });
+        //enter phase for mouse per line
+        var mousePerLine = mouseG.selectAll('.mouse-per-line')
+            .data(params.data)
+            .enter()
+            .append('g')
+            .attr('class', 'mouse-per-line');
+
+        //update phase for mouse per line
+        mousePerLine.attr('id', function (d, i) {
+            return `mousePerLine${i}`;
+        }).on('mouseover', function (d, i) {
+                d3.select(`#menuGroupLine${i}`).style('stroke-width', '2.5px');
+                for(var j = 0; j < params.data.length; j++) {
+                    if(j !== i) {
+                        d3.select(`#menuGroupLine${j}`).style('stroke', '#C0C0C0');
+                    }
+                }
+            })
+            .on('mouseout', function (d, i) {
+                d3.select(`#menuGroupLine${i}`).style('stroke-width', '2px');
+                for(var j = 0; j < params.data.length; j++) {
+                    if(j !== i) {
+                        d3.select(`#menuGroupLine${j}`).style('stroke',  lineGraphColors[j]);
+                    }
+                }
+            })
+            .on('click', function (d, i) {
+                if(currentLineGraphView === 'topmenugroups' || currentLineGraphView === 'submenugroups') {
+                    d3.select('#xAxisLineGraph').remove();
+                    d3.select('#yAxisLineGraph').remove();
+                    d3.select('#lineGraphGridLines').remove();
+                    d3.select('#mouseG').remove();
+                    d3.selectAll(`.legend`).remove();
+                    d3.selectAll('.menuGroupLineGraphLines').remove();
+                    d3.selectAll('.tooltipSection').remove();
+                    d3.select('#LineGraphTitle').text(`${d.menuName} Sales`);
+
+                    var subLevelData = d.subMenus;
+
+                    if(currentLineGraphView === 'topmenugroups') {
+                        currentLineGraphView = 'submenugroups';
+                        currentTopLevelMenu = d.menuName;
+                        plotLineGraph.call(lineGraph, {
+                            data: subLevelData,
+                            menuNamesToDisplay: Object.keys(hierarchicalMenuNamesForLineGraph[d.menuName]),
+                            axis: {
+                                xAxis: xAxisLineGraph,
+                                yAxis: yAxisLineGraph
+                            }
+                        });
+                    } else {
+                        currentLineGraphView = 'menuitems';
+                        plotLineGraph.call(lineGraph, {
+                            data: subLevelData,
+                            menuNamesToDisplay: Object.keys(hierarchicalMenuNamesForLineGraph[currentTopLevelMenu][d.menuName]),
+                            axis: {
+                                xAxis: xAxisLineGraph,
+                                yAxis: yAxisLineGraph
+                            }
+                        });
+                    }
+                }
+            });
+
+        mousePerLine.append('circle')
+            .attr('r', 7)
+            .style('stroke', function(d) {
+                return color(d.menuName);
+            })
+            .style('fill', 'white')
+            .style('stroke-width', '1px')
+            .style('opacity', '0');
+
+        mousePerLine.append('circle')
+            .attr('r', 5)
+            .style('fill', function (d) {
+                return color(d.menuName);
+            })
+            .style('stroke-width', '1px')
+            .style('opacity', '1');
+
+
+        //exit phase for legend
+        d3.selectAll('.legend')
+            .data(params.data)
+            .exit()
+            .remove();
+
+        //exit phase for lines
+        this.selectAll('.menuGroupLineGraphLines')
+            .data(params.data)
+            .exit()
+            .remove();
+
+        //exit phase for mouse per line
+        mouseG.selectAll('.mouse-per-line')
+            .data(params.data)
+            .exit()
+            .remove();
+    }
+
+    function appendToolTipSections (amountOfSectionsToAppend) {
+        for(var i = 0; i < amountOfSectionsToAppend; i++) {
+            lineGraphToolTip.append('div')
+                .attr('id', 'menuNameToolTipDiv' + i)
+                .classed('tooltipSection', true)
+                .attr('width', '150')
+                .attr('height', '30')
+                .style('margin-bottom', '5px')
+                .style('background-color', 'white')
+                .style('width', '100%')
+                .style('display', 'inline-block');
+
+            d3.select('#menuNameToolTipDiv' + i).append('svg')
+                .attr('id', 'menuNameSquare' + i)
+                .attr('width', '20')
+                .attr('height', '20')
+                .style('margin', '5')
+                .style('float', 'left')
+                .style('background-color', lineGraphColors[i]);
+
+            d3.select('#menuNameToolTipDiv' + i).append('text')
+                .attr('id', 'amountSoldText' + i)
+                .style('text-anchor', 'middle')
+                .style('color', 'black')
+                .style('font-weight', 'bold')
+                .style('font-size', '100%')
+                .style('font-family', 'Times New Roman')
+                .style('margin-top', '7px')
+                .style('margin-bottom', '7px')
+                .style('margin-left', '10px')
+                .style('float', 'left');
+        }
+    }
+
+    function appendSingleTooltipSection (idNumber) {
+        lineGraphToolTip.insert('div', '#menuNameToolTipDiv' + (idNumber + 1))
+            .attr('id', 'menuNameToolTipDiv' + idNumber)
+            .classed('tooltipSection', true)
+            .attr('width', '150')
+            .attr('height', '30')
+            .style('margin-bottom', '5px')
+            .style('background-color', 'white')
+            .style('width', '100%')
+            .style('display', 'inline-block');
+
+        d3.select('#menuNameToolTipDiv' + idNumber).append('svg')
+            .attr('id', 'menuNameSquare' + idNumber)
+            .attr('width', '20')
+            .attr('height', '20')
+            .style('margin', '5')
+            .style('float', 'left')
+            .style('background-color', lineGraphColors[idNumber]);
+
+        d3.select('#menuNameToolTipDiv' + idNumber).append('text')
+            .attr('id', 'amountSoldText' + idNumber)
+            .style('text-anchor', 'middle')
+            .style('color', 'black')
+            .style('font-weight', 'bold')
+            .style('font-size', '100%')
+            .style('font-family', 'Times New Roman')
+            .style('margin-top', '7px')
+            .style('margin-bottom', '7px')
+            .style('margin-left', '10px')
+            .style('float', 'left');
+    }
+
+    function drawLineGraphAxis (params) {
+        this.append('g')
+            .classed('x axis', true)
+            .attr('id', 'xAxisLineGraph')
+            .attr('transform', 'translate(0,' + heightOfLineGraph + ')')
+            .call(params.axis.xAxis)
+            .style('font-size', '13px')
+            .style('font-family', 'Times New Roman')
+            .selectAll('text')
+            .style('text-anchor', 'end')
+            .attr('dx', -8)
+            .attr('dy', 8)
+            .attr('transform', 'translate(0,0) rotate(-45)');
+
+        this.append('g')
+            .classed('y axis', true)
+            .attr('id', 'yAxisLineGraph')
+            .call(params.axis.yAxis)
+            .style('font-size', '15px')
+            .style('font-family', 'Times New Roman')
+            .append('text')
+            .attr('transform', 'rotate(-90)')
+            .attr('y', 6)
+            .attr('dy', '.71em')
+            .style('text-anchor', 'end');
+
+        var yGridlines = d3.axisLeft()
+            .scale(yScaleLineGraph)
+            .tickSize(-widthOfLineGraph,0,0)
+            .tickFormat('');
+
+        this.append('g')
+            .call(yGridlines)
+            .classed('gridline', true)
+            .attr('id', 'lineGraphGridLines')
+            .attr('transform', 'translate(0,0)');
+    }
+
+    showTopLinesButton.on('click', function () {
+        d3.select('.mouse-line').attr('visibility', 'visible');
+        for(var i = 0; i < maxLinesToDisplay; i++) {
+            if(statesOfLegendRectanglesArray[i] === 0) {
+                appendSingleTooltipSection(i);
+                d3.select(`#menuGroupElement${i}`).attr('visibility', 'visible');
+                d3.select(`#mousePerLine${i}`).attr('visibility', 'visible');
+                d3.select(`#legendRectangle${i}`).style('fill', lineGraphColors[i]);
+                statesOfLegendRectanglesArray[i] = 1;
+            }
+        }
+    });
+
+    hideAllLinesButton.on('click', function () {
+        d3.selectAll('.menuGroupLineGraphLines').attr('visibility', 'hidden');
+        d3.selectAll('.mouse-per-line').attr('visibility', 'hidden');
+        d3.selectAll('.legendRectangles').style('fill', 'none');
+        d3.selectAll('.tooltipSection').remove();
+        d3.select('.mouse-line').attr('visibility', 'hidden');
+        statesOfLegendRectanglesArray = statesOfLegendRectanglesArray.map(function(element) {
+            return 0;
+        });
+    });
+
+    showDataByTopMenuGroupsButton.on('click', function () {
+        if(currentLineGraphView !== 'topmenugroups') {
+            currentLineGraphView = 'topmenugroups';
+            d3.select('#xAxisLineGraph').remove();
+            d3.select('#yAxisLineGraph').remove();
+            d3.select('#lineGraphGridLines').remove();
+            d3.select('#mouseG').remove();
+            d3.selectAll('.legend').remove();
+            d3.selectAll('.menuGroupLineGraphLines').remove();
+            d3.selectAll('.tooltipSection').remove();
+            d3.select('#LineGraphTitle').text('Top Menu Groups Sales');
+            plotLineGraph.call(lineGraph, {
+                data: lineGraphData,
+                menuNamesToDisplay: Object.keys(hierarchicalMenuNamesForLineGraph),
+                axis: {
+                    xAxis: xAxisLineGraph,
+                    yAxis: yAxisLineGraph
+                }
+            });
+        }
+    });
+
+    exportlineGraphDataToCsvButton.on("click", function () {
+        var csvString = 'data:text/csv;charset=utf-8,Date';
+
+        for(var i = 0; i < currentLineGraphData.length; i++) {
+            if(statesOfLegendRectanglesArray[i] === 1) {
+                csvString += ',' + currentLineGraphData[i].menuName;
+            }
+        }
+
+        csvString += '\n';
+
+       for(var i = 0; i < dateRange.length; i++) {
+           var line = dateRange[i].getMonth() + 1 + '/' + dateRange[i].getDate() + '/' + dateRange[i].getFullYear();
+           for(var j = 0; j < currentLineGraphData.length; j++) {
+               if(statesOfLegendRectanglesArray[j] == 1) {
+                   line += ',' + currentLineGraphData[j].values[i][dateRange[i]];
+               }
+           }
+
+           csvString += line + '\r\n';
+       }
+
+        var encodedUri = encodeURI(csvString);
+        var link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'lineGraphData.csv');
+        document.body.appendChild(link);
+        link.click();
+        
+    });
+
+    downloadGraphButton.on('click', function () {
+        var svgString = getSVGString(d3.select('.lineGraphBackground').node());
+        svgString2Image( svgString, 2*widthOfLineGraphSVG, 2*heightOfLneGraphSVG, 'png', save); // passes Blob and filesize String to the callback
+
+        function save( dataBlob, filesize ){
+            saveAs( dataBlob, 'lineGraph.png' ); // FileSaver.js function
+        }
+    });
+
+    function findMaxAndFillEmptyDates (data) {
+        var max = 0;
+        for(var i = 0; i < data.length; i++) {
+            data[i].totalAmountSold = 0;
+            for(var j = 0; j < dateRange.length; j++) {
+                if(data[i].values[j]) {
+                    data[i].totalAmountSold += data[i].values[j][data[i].values[j].date];
+                    if(data[i].values[j][data[i].values[j].date] > max) {
+                        max = data[i].values[j][data[i].values[j].date];
+                    }
+                    if(data[i].values[j].date.getTime() !== dateRange[j].getTime()) {
+                        dateObject = {};
+                        dateObject.date = dateRange[j];
+                        dateObject[dateRange[j]] = 0;
+                        data[i].values.splice(j, 0, dateObject);
+                    }
+                } else {
+                    dateObject = {};
+                    dateObject.date = dateRange[j];
+                    dateObject[dateRange[j]] = 0;
+                    data[i].values.push(dateObject);
+                }
+            }
+        }
+
+        return max;
+    }
+
+    plotLineGraph.call(lineGraph, {
+        data: lineGraphData,
+        menuNamesToDisplay: Object.keys(hierarchicalMenuNamesForLineGraph),
+        axis: {
+            xAxis: xAxisLineGraph,
+            yAxis: yAxisLineGraph
+        }
+    });
+</script>
+</body>
+</html>
